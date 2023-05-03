@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bme280 = { path = "C:/git/bme280-rs" }
 embedded-svc.workspace = true
 bleps.workspace = true
 bleps-macros.workspace = true

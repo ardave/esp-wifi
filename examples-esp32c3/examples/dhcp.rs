@@ -20,6 +20,14 @@ use hal::{peripherals::Peripherals, prelude::*, Rtc};
 use smoltcp::iface::SocketStorage;
 use smoltcp::wire::Ipv4Address;
 
+//use embedded_hal::blocking::delay::DelayMs;
+use esp32c3_hal::delay::Delay;
+
+use esp32c3_hal::i2c::I2C;
+use esp32c3_hal::IO;
+use bme280::BME280;
+
+
 const SSID: &str = env!("SSID");
 const PASSWORD: &str = env!("PASSWORD");
 
@@ -30,11 +38,44 @@ fn main() -> ! {
 
     let peripherals = Peripherals::take();
 
-    let system = examples_util::system!(peripherals);
+    let mut system = examples_util::system!(peripherals);
     let clocks = examples_util::clocks!(system);
     examples_util::rtc!(peripherals);
 
     let timer = examples_util::timer!(peripherals, clocks);
+
+    let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
+
+    let i2c_bus = I2C::new(
+        peripherals.I2C0,
+        io.pins.gpio5,
+        io.pins.gpio6,
+        100u32.kHz(),
+        &mut system.peripheral_clock_control,
+        &clocks,
+    );
+
+    let delay = Delay::new(&clocks);
+
+    let mut bme280 = BME280::new_secondary(i2c_bus, delay);
+
+    let bme_init_result = bme280.init();
+
+    match &bme_init_result {
+        Ok(_) => {
+            let measurements_result = bme280.measure();
+            match measurements_result {
+                Ok(measurements) => println!("Measurements: {:?}", measurements),
+                Err(e) => println!("Measurements Errors: {:?}", e)
+            }
+            //println!("Measurements: {:?}", measurements);
+        },
+
+        Err(e) => println!("BME280 Initialization Error: {:?}", e)
+    }
+    
+    println!("Dave: {:?}", bme_init_result);
+
     initialize(
         timer,
         Rng::new(peripherals.RNG),
